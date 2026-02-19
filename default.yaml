@@ -1,0 +1,67 @@
+# ── M5 Forecasting Pipeline Config ───────────────────────────────────────────
+data:
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  use_demo: true          # Set false when using real M5 data from Kaggle
+  n_demo_items: 50        # Items to simulate in demo mode
+  n_demo_days: 730        # Days of history in demo mode
+
+features:
+  lag_days: [7, 14, 21, 28, 35, 42]
+  rolling_windows: [7, 28, 90]
+  price_features: true
+  calendar_features: true
+  target_encoding: true
+
+training:
+  forecast_horizon: 28    # Days ahead to predict
+  backtest_windows: 3     # Number of walk-forward folds
+  val_window_days: 28     # Size of each validation window
+  min_train_days: 365     # Minimum training history required
+
+models:
+  arima:
+    order: [2, 1, 2]
+    seasonal_order: [1, 1, 1, 7]
+    enabled: true
+
+  prophet:
+    yearly_seasonality: true
+    weekly_seasonality: true
+    daily_seasonality: false
+    changepoint_prior_scale: 0.05
+    enabled: true
+
+  lgbm:
+    n_estimators: 500
+    learning_rate: 0.05
+    num_leaves: 63
+    min_child_samples: 20
+    subsample: 0.8
+    colsample_bytree: 0.8
+    reg_alpha: 0.1
+    reg_lambda: 0.1
+    random_state: 42
+    enabled: true
+
+  lstm:
+    hidden_size: 128
+    num_layers: 2
+    dropout: 0.2
+    sequence_length: 28
+    epochs: 30
+    batch_size: 256
+    learning_rate: 0.001
+    enabled: true
+
+  ensemble:
+    weights:
+      lgbm: 0.5
+      lstm: 0.3
+      prophet: 0.2
+    enabled: true
+
+evaluation:
+  metrics: ["mae", "rmse", "mape"]
+  output_dir: "outputs/metrics"
+  plots_dir: "outputs/plots"
