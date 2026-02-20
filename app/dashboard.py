@@ -116,14 +116,36 @@ def load_sales_data():
     from src.utils.data_loader import load_m5_data
     cfg     = load_config()
     raw_dir = PROJECT_ROOT / cfg["data"]["raw_dir"]
+
+    # Try HF dataset first (when running on HF Spaces)
     if not (raw_dir / "calendar.csv").exists():
         _pull_from_hf(raw_dir)
+
+    # Fall back: generate demo data by importing directly (no subprocess)
     if not (raw_dir / "calendar.csv").exists():
-        import subprocess
-        subprocess.run(
-            ["python", str(PROJECT_ROOT / "src" / "utils" / "generate_demo_data.py")],
-            check=True, capture_output=True,
+        from src.utils.generate_demo_data import generate_m5_style_data
+
+        # Streamlit Cloud may have a read-only project dir — use /tmp as fallback
+        try:
+            raw_dir.mkdir(parents=True, exist_ok=True)
+            test_file = raw_dir / ".write_test"
+            test_file.touch(); test_file.unlink()
+            write_dir = raw_dir
+        except OSError:
+            write_dir = Path("/tmp/m5_data")
+            write_dir.mkdir(parents=True, exist_ok=True)
+
+        sales, calendar, prices = generate_m5_style_data(
+            n_items=cfg["data"]["n_demo_items"],
+            n_days=cfg["data"]["n_demo_days"],
         )
+        sales.to_csv(write_dir / "sales_train_evaluation.csv", index=False)
+        calendar.to_csv(write_dir / "calendar.csv", index=False)
+        prices.to_csv(write_dir / "sell_prices.csv", index=False)
+
+        # Point config at wherever we actually wrote the data
+        cfg["data"]["raw_dir"] = str(write_dir)
+
     sales_long, _, _ = load_m5_data(cfg)
     return sales_long, cfg
 
@@ -276,13 +298,21 @@ with st.sidebar:
     st.caption("Walmart Demand Forecasting Pipeline")
     st.markdown("---")
 
-    with st.spinner("Loading data…"):
+    with st.spinner("Loading data… (generating demo data on first run, ~10s)"):
         try:
             sales_long, cfg = load_sales_data()
             data_ok = True
             st.success(f"✅ {sales_long['id'].nunique():,} items · {sales_long['date'].nunique():,} days")
         except Exception as e:
-            st.error(f"Data error:\n{e}"); data_ok = False
+            import traceback
+            st.error(
+                f"Failed to load data.\n\n"
+                f"**Error:** `{e}`\n\n"
+                f"Try refreshing the page. If it persists, check the logs."
+            )
+            with st.expander("Full traceback"):
+                st.code(traceback.format_exc())
+            data_ok = False
 
     if data_ok:
         st.markdown("---")
