@@ -388,7 +388,9 @@ with tab1:  # FORECAST
                              mode="lines+markers", name=f"{model_choice} forecast",
                              line=dict(color=MODEL_COLORS.get(model_choice,"#fff"), width=2.5, dash="dash"),
                              marker=dict(size=5)))
-    fig.add_vline(x=str(series.index[-1]), line_dash="dot", line_color="#546e7a",
+    # add_vline needs numeric timestamp for datetime axes
+    cutoff_ms = int(series.index[-1].timestamp() * 1000)
+    fig.add_vline(x=cutoff_ms, line_dash="dot", line_color="#546e7a",
                   annotation_text="  forecast start", annotation_position="top right",
                   annotation_font_color="#78909c")
     fig.update_layout(**plot_base(460))
@@ -433,7 +435,8 @@ with tab2:  # MODEL COMPARISON
                 rows.append({"Model":m, **mt, "Coverage":f"{cov*100:.0f}%",
                               "Type":"Zero-shot" if m=="Chronos" else "Trained"})
 
-    fig2.add_vline(x=str(series.index[-1]), line_dash="dot", line_color="#546e7a")
+    cutoff_ms2 = int(series.index[-1].timestamp() * 1000)
+    fig2.add_vline(x=cutoff_ms2, line_dash="dot", line_color="#546e7a")
     fig2.update_layout(**plot_base(440))
     st.plotly_chart(fig2, use_container_width=True)
 
