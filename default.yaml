@@ -3,8 +3,8 @@ data:
   raw_dir: "data/raw"
   processed_dir: "data/processed"
   use_demo: true          # Set false when using real M5 data from Kaggle
-  n_demo_items: 50        # Items to simulate in demo mode
-  n_demo_days: 730        # Days of history in demo mode
+  n_demo_items: 50
+  n_demo_days: 730
 
 features:
   lag_days: [7, 14, 21, 28, 35, 42]
@@ -14,10 +14,10 @@ features:
   target_encoding: true
 
 training:
-  forecast_horizon: 28    # Days ahead to predict
-  backtest_windows: 3     # Number of walk-forward folds
-  val_window_days: 28     # Size of each validation window
-  min_train_days: 365     # Minimum training history required
+  forecast_horizon: 28
+  backtest_windows: 3
+  val_window_days: 28
+  min_train_days: 365
 
 models:
   arima:
@@ -54,14 +54,24 @@ models:
     learning_rate: 0.001
     enabled: true
 
+  # Amazon Chronos — zero-shot pretrained foundation model (2024)
+  # No training needed. Downloads ~300MB model on first run.
+  chronos:
+    model_id: "amazon/chronos-t5-tiny"   # tiny=fastest, small/base/large=more accurate
+    n_samples: 20                          # sample paths for uncertainty
+    device: "cpu"                          # use "cuda" if GPU available
+    enabled: true
+
   ensemble:
     weights:
-      lgbm: 0.5
-      lstm: 0.3
-      prophet: 0.2
+      lgbm: 0.45
+      lstm: 0.25
+      chronos: 0.15
+      prophet: 0.15
     enabled: true
 
 evaluation:
-  metrics: ["mae", "rmse", "mape"]
+  metrics: ["mae", "rmse", "mape", "coverage"]
+  conformal_coverage: 0.95               # target coverage for prediction intervals
   output_dir: "outputs/metrics"
   plots_dir: "outputs/plots"
